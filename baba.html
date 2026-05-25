@@ -1,0 +1,1073 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="theme-color" content="#F2F2F7">
+  <meta name="description" content="Календарь месячных и овуляции — удобное веб-приложение">
+  <title>Календарь цикла</title>
+  <link rel="icon" type="image/png" href="icon.png">
+  <link rel="apple-touch-icon" href="icon.png">
+  <!-- Современный округлый шрифт -->
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-primary: #F2F2F7;
+      --bg-secondary: #FFFFFF;
+      --bg-tertiary: #F9F9FB;
+      --text-primary: #1C1C1E;
+      --text-secondary: #6D6D72;
+      --text-tertiary: #AEAEB2;
+      --color-period: #FF3B6E;
+      --color-period-bg: #FFE5EC;
+      --color-period-light: #FFF0F3;
+      --color-ovulation: #5AC8FA;
+      --color-ovulation-bg: #E5F7FF;
+      --color-ovulation-light: #F0FAFF;
+      --color-fertile: #34C759;
+      --color-fertile-bg: #E5FFEC;
+      --color-fertile-light: #F0FFF4;
+      --color-today: #007AFF;
+      --color-accent: #FF3B6E;
+      --color-accent-hover: #E03560;
+      --separator: #E5E5EA;
+      --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.06);
+      --shadow-md: 0 4px 14px rgba(0, 0, 0, 0.08);
+      --overlay: rgba(0, 0, 0, 0.25);
+      --toast-bg: #1C1C1E;
+      --toast-text: #FFFFFF;
+      --progress-bg: #E5E5EA;
+      --ui-scale: 1;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+      -webkit-user-select: none;
+      user-select: none;
+    }
+
+    html {
+      font-family: 'Nunito', -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Helvetica Neue', sans-serif;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      height: 100%;
+      overflow: hidden;
+      text-align: center; /* глобальное центрирование текста */
+    }
+
+    body {
+      height: 100dvh;
+      height: 100vh;
+      overflow: hidden;
+      background: var(--bg-primary);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .app-container {
+      width: 100%;
+      height: 100dvh;
+      height: 100vh;
+      overflow-y: scroll;
+      overflow-x: hidden;
+      scroll-snap-type: y mandatory;
+      -webkit-overflow-scrolling: touch;
+      background: var(--bg-primary);
+    }
+    .app-container::-webkit-scrollbar { display: none; }
+
+    .screen {
+      min-height: 100dvh;
+      min-height: 100vh;
+      scroll-snap-align: start;
+      scroll-snap-stop: always;
+      display: flex;
+      flex-direction: column;
+      padding: calc(1.2rem * var(--ui-scale)) calc(1rem * var(--ui-scale)) calc(1.8rem * var(--ui-scale) + env(safe-area-inset-bottom, 0px));
+      position: relative;
+      overflow-y: hidden;
+      transition: none;
+    }
+
+    /* --- ЭКРАН КАЛЕНДАРЯ (редизайн) --- */
+    .screen-calendar {
+      gap: calc(0.6rem * var(--ui-scale));
+      justify-content: flex-start;
+    }
+
+    .calendar-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: calc(0.4rem * var(--ui-scale)) 0;
+      flex-shrink: 0;
+      min-height: calc(3.2rem * var(--ui-scale));
+    }
+    .month-nav {
+      display: flex;
+      align-items: center;
+      gap: calc(0.6rem * var(--ui-scale));
+      flex: 1;
+      justify-content: center;
+    }
+    .month-title {
+      font-size: calc(1.4rem * var(--ui-scale));
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      min-width: calc(9rem * var(--ui-scale));
+      color: var(--text-primary);
+    }
+
+    .btn-icon {
+      width: calc(3rem * var(--ui-scale));
+      height: calc(3rem * var(--ui-scale));
+      border-radius: 50%;
+      border: none;
+      background: var(--bg-secondary);
+      color: var(--text-primary);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.15s, transform 0.15s;
+      flex-shrink: 0;
+      box-shadow: var(--shadow-sm);
+      font-size: calc(1.2rem * var(--ui-scale));
+      font-weight: 600;
+    }
+    .btn-icon:active {
+      background: var(--bg-tertiary);
+      transform: scale(0.94);
+    }
+    .btn-icon.small {
+      width: calc(2.4rem * var(--ui-scale));
+      height: calc(2.4rem * var(--ui-scale));
+      font-size: calc(1rem * var(--ui-scale));
+    }
+
+    .weekdays {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      text-align: center;
+      font-size: calc(0.8rem * var(--ui-scale));
+      font-weight: 600;
+      color: var(--text-secondary);
+      padding: calc(0.3rem * var(--ui-scale)) 0;
+      flex-shrink: 0;
+      letter-spacing: 0.02em;
+    }
+    .weekdays span {
+      padding: calc(0.3rem * var(--ui-scale)) 0;
+    }
+    .weekdays span:nth-child(6),
+    .weekdays span:nth-child(7) {
+      color: var(--color-period);
+      opacity: 0.8;
+    }
+
+    .calendar-grid {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: calc(0.5rem * var(--ui-scale));
+      flex: 1;
+      align-content: start;
+      flex-shrink: 0;
+      padding: calc(0.2rem * var(--ui-scale));
+    }
+
+    .calendar-cell {
+      aspect-ratio: 1 / 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 50%;
+      font-size: calc(1.1rem * var(--ui-scale));
+      font-weight: 500;
+      cursor: pointer;
+      position: relative;
+      transition: background 0.1s, box-shadow 0.1s, transform 0.1s;
+      border: none;
+      background: transparent;
+      color: var(--text-primary);
+      outline: none;
+      min-width: 0;
+      letter-spacing: -0.01em;
+      box-shadow: none;
+    }
+    .calendar-cell:active {
+      background: var(--bg-tertiary);
+      transform: scale(0.92);
+    }
+    .calendar-cell.other-month {
+      color: var(--text-tertiary);
+      pointer-events: none;
+      opacity: 0.4;
+    }
+    .calendar-cell.today {
+      font-weight: 700;
+      color: var(--color-today);
+      box-shadow: inset 0 0 0 2.5px var(--color-today);
+    }
+    .calendar-cell.period-start {
+      background: var(--color-period) !important;
+      color: #FFFFFF !important;
+      font-weight: 700;
+      box-shadow: 0 4px 12px rgba(255, 59, 110, 0.35);
+    }
+    .calendar-cell.period-day {
+      background: var(--color-period-light);
+      color: var(--color-period);
+      font-weight: 600;
+    }
+    .calendar-cell.ovulation-day {
+      background: var(--color-ovulation-light);
+      color: var(--color-ovulation);
+      font-weight: 700;
+      box-shadow: inset 0 0 0 2.5px var(--color-ovulation);
+    }
+    .calendar-cell.fertile-day {
+      background: var(--color-fertile-light);
+      color: var(--color-fertile);
+      font-weight: 500;
+    }
+    .dot-indicator-cell {
+      position: absolute;
+      bottom: 10%;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 5px;
+      height: 5px;
+      border-radius: 50%;
+      pointer-events: none;
+      display: none;
+    }
+    .calendar-cell.period-day .dot-indicator-cell,
+    .calendar-cell.ovulation-day .dot-indicator-cell,
+    .calendar-cell.fertile-day .dot-indicator-cell {
+      display: block;
+      background: currentColor;
+    }
+
+    .legend {
+      display: flex;
+      gap: calc(1rem * var(--ui-scale));
+      justify-content: center;
+      flex-wrap: wrap;
+      font-size: calc(0.75rem * var(--ui-scale));
+      color: var(--text-secondary);
+      flex-shrink: 0;
+      padding: calc(0.3rem * var(--ui-scale)) 0;
+      font-weight: 500;
+    }
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: calc(0.25rem * var(--ui-scale));
+    }
+    .dot {
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+    .dot-period { background: var(--color-period); }
+    .dot-ovulation { background: var(--color-ovulation); }
+    .dot-fertile { background: var(--color-fertile); }
+
+    .hint-text {
+      text-align: center;
+      font-size: calc(0.75rem * var(--ui-scale));
+      color: var(--text-tertiary);
+      flex-shrink: 0;
+      padding: calc(0.3rem * var(--ui-scale)) 0;
+      font-weight: 500;
+    }
+
+    /* --- ЭКРАН ДАШБОРДА (без изменений, только шрифт) --- */
+    .screen-dashboard {
+      gap: calc(0.8rem * var(--ui-scale));
+    }
+    .dash-header {
+      flex-shrink: 0;
+      padding: calc(0.2rem * var(--ui-scale)) 0;
+    }
+    .dash-header h2 {
+      font-size: calc(1.5rem * var(--ui-scale));
+      font-weight: 700;
+      letter-spacing: -0.02em;
+    }
+    .dash-content {
+      display: flex;
+      flex-direction: column;
+      gap: calc(0.8rem * var(--ui-scale));
+      flex: 1;
+    }
+    .dash-card {
+      background: var(--bg-secondary);
+      border-radius: calc(1.2rem * var(--ui-scale));
+      padding: calc(1.2rem * var(--ui-scale));
+      display: flex;
+      flex-direction: column;
+      gap: calc(0.3rem * var(--ui-scale));
+      box-shadow: var(--shadow-sm);
+      position: relative;
+      overflow: hidden;
+    }
+    .card-label {
+      font-size: calc(0.7rem * var(--ui-scale));
+      color: var(--text-secondary);
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+    .card-value {
+      font-size: calc(2.2rem * var(--ui-scale));
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      line-height: 1;
+    }
+    .card-value-small {
+      font-size: calc(1.1rem * var(--ui-scale));
+      font-weight: 600;
+    }
+    .card-icon {
+      position: absolute;
+      top: calc(1rem * var(--ui-scale));
+      right: calc(1rem * var(--ui-scale));
+      font-size: calc(1.4rem * var(--ui-scale));
+    }
+    .progress-bar {
+      width: 100%;
+      height: 4px;
+      background: var(--progress-bg);
+      border-radius: 10px;
+      overflow: hidden;
+      margin-top: calc(0.3rem * var(--ui-scale));
+    }
+    .progress-fill {
+      height: 100%;
+      background: var(--color-accent);
+      border-radius: 10px;
+      transition: width 0.4s;
+      width: 0%;
+    }
+
+    .btn-primary {
+      display: block;
+      width: 100%;
+      padding: calc(0.9rem * var(--ui-scale));
+      background: var(--color-accent);
+      color: #FFFFFF;
+      border: none;
+      border-radius: calc(2rem * var(--ui-scale));
+      font-size: calc(0.9rem * var(--ui-scale));
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.15s, transform 0.15s;
+      box-shadow: 0 4px 16px rgba(255, 59, 110, 0.3);
+      min-height: calc(2.8rem * var(--ui-scale));
+    }
+    .btn-primary:active { background: var(--color-accent-hover); transform: scale(0.97); }
+    .btn-secondary {
+      display: block;
+      width: 100%;
+      padding: calc(0.9rem * var(--ui-scale));
+      background: var(--bg-secondary);
+      color: var(--text-primary);
+      border: 1px solid var(--separator);
+      border-radius: calc(2rem * var(--ui-scale));
+      font-size: calc(0.9rem * var(--ui-scale));
+      font-weight: 500;
+      cursor: pointer;
+      transition: background 0.15s, transform 0.15s;
+      min-height: calc(2.8rem * var(--ui-scale));
+    }
+    .btn-secondary:active { background: var(--bg-tertiary); transform: scale(0.97); }
+    .btn-danger {
+      display: block;
+      width: 100%;
+      padding: calc(0.9rem * var(--ui-scale));
+      background: transparent;
+      color: #FF3B30;
+      border: 1px solid #FF3B30;
+      border-radius: calc(2rem * var(--ui-scale));
+      font-size: calc(0.9rem * var(--ui-scale));
+      font-weight: 500;
+      cursor: pointer;
+      transition: 0.15s;
+      min-height: calc(2.8rem * var(--ui-scale));
+    }
+    .btn-danger:active { background: #FF3B30; color: #FFF; }
+
+    .page-indicator {
+      position: fixed;
+      bottom: calc(1.2rem * var(--ui-scale) + env(safe-area-inset-bottom, 0px));
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      gap: calc(0.5rem * var(--ui-scale));
+      z-index: 100;
+    }
+    .dot-indicator {
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      background: var(--text-tertiary);
+      cursor: pointer;
+      transition: 0.25s;
+    }
+    .dot-indicator.active {
+      background: var(--color-accent);
+      width: 22px;
+      border-radius: 10px;
+    }
+
+    .modal-overlay {
+      position: fixed; inset: 0;
+      background: var(--overlay);
+      z-index: 200;
+      display: flex; align-items: flex-end; justify-content: center;
+      opacity: 0; pointer-events: none;
+      transition: opacity 0.25s;
+    }
+    .modal-overlay.active { opacity: 1; pointer-events: auto; }
+    .modal-sheet {
+      background: var(--bg-secondary);
+      border-radius: calc(1.8rem * var(--ui-scale)) calc(1.8rem * var(--ui-scale)) 0 0;
+      width: 100%; max-width: 500px; max-height: 85vh;
+      overflow-y: auto;
+      padding: calc(1.8rem * var(--ui-scale)) calc(1.2rem * var(--ui-scale)) calc(1.8rem * var(--ui-scale) + env(safe-area-inset-bottom, 0px));
+      transform: translateY(100%);
+      transition: transform 0.3s cubic-bezier(0.25,0.1,0.25,1);
+      box-shadow: var(--shadow-md);
+    }
+    .modal-overlay.active .modal-sheet { transform: translateY(0); }
+    .modal-sheet::-webkit-scrollbar { display: none; }
+    .modal-handle {
+      width: calc(2.2rem * var(--ui-scale));
+      height: 4px;
+      background: var(--text-tertiary);
+      border-radius: 10px;
+      margin: 0 auto calc(1.2rem * var(--ui-scale));
+      opacity: 0.6;
+    }
+    .modal-title {
+      font-size: calc(1.2rem * var(--ui-scale));
+      font-weight: 700;
+      margin-bottom: calc(1.2rem * var(--ui-scale));
+      text-align: center;
+    }
+    .form-group { margin-bottom: calc(0.8rem * var(--ui-scale)); }
+    .form-label {
+      font-size: calc(0.75rem * var(--ui-scale));
+      color: var(--text-secondary);
+      font-weight: 500;
+      margin-bottom: calc(0.3rem * var(--ui-scale));
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+    .form-input {
+      width: 100%;
+      padding: calc(0.8rem * var(--ui-scale));
+      border: 1px solid var(--separator);
+      border-radius: calc(0.9rem * var(--ui-scale));
+      font-size: calc(0.9rem * var(--ui-scale));
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      outline: none;
+    }
+    .form-row {
+      display: flex; gap: calc(0.8rem * var(--ui-scale)); align-items: center;
+    }
+    .form-value {
+      font-size: calc(1.2rem * var(--ui-scale));
+      font-weight: 600;
+      min-width: calc(2.5rem * var(--ui-scale));
+      text-align: center;
+    }
+    .btn-row {
+      display: flex; gap: calc(0.8rem * var(--ui-scale)); margin-top: calc(1rem * var(--ui-scale));
+    }
+    .btn-row .btn-secondary, .btn-row .btn-primary { flex: 1; }
+
+    .toast {
+      position: fixed;
+      bottom: calc(2rem * var(--ui-scale) + 40px + env(safe-area-inset-bottom, 0px));
+      left: 50%;
+      transform: translateX(-50%) translateY(20px);
+      background: var(--toast-bg);
+      color: var(--toast-text);
+      padding: calc(0.8rem * var(--ui-scale)) calc(1.4rem * var(--ui-scale));
+      border-radius: calc(2rem * var(--ui-scale));
+      font-size: calc(0.75rem * var(--ui-scale));
+      font-weight: 500;
+      opacity: 0;
+      pointer-events: none;
+      transition: all 0.25s;
+      z-index: 300;
+      white-space: nowrap;
+      box-shadow: var(--shadow-md);
+    }
+    .toast.visible { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+    .context-menu {
+      position: fixed;
+      background: var(--bg-secondary);
+      border-radius: calc(1.2rem * var(--ui-scale));
+      padding: calc(0.5rem * var(--ui-scale)) 0;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+      z-index: 250;
+      min-width: calc(10rem * var(--ui-scale));
+      opacity: 0; pointer-events: none;
+      transform: scale(0.9);
+      transition: opacity 0.15s, transform 0.15s;
+    }
+    .context-menu.active { opacity: 1; pointer-events: auto; transform: scale(1); }
+    .context-menu-item {
+      padding: calc(0.7rem * var(--ui-scale)) calc(1.2rem * var(--ui-scale));
+      font-size: calc(0.85rem * var(--ui-scale));
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: calc(0.5rem * var(--ui-scale));
+      color: var(--text-primary);
+    }
+    .context-menu-item:active { background: var(--bg-tertiary); }
+
+    @media (max-width: 320px) {
+      html { font-size: 14px; }
+    }
+    @media (min-width: 500px) {
+      .app-container { max-width: 430px; margin: 0 auto; border-left: 1px solid var(--separator); border-right: 1px solid var(--separator); }
+      .modal-sheet { border-radius: calc(1.8rem * var(--ui-scale)); margin-bottom: 1rem; max-height: 75vh; }
+    }
+  </style>
+</head>
+<body>
+<div class="app-container" id="appContainer">
+  <!-- Экран календаря -->
+  <section class="screen screen-calendar" id="screenCalendar">
+    <header class="calendar-header">
+      <button class="btn-icon small" id="btnSettings">⚙️</button>
+      <div class="month-nav">
+        <button class="btn-icon" id="btnPrevMonth">←</button>
+        <h2 class="month-title" id="monthTitle">Май 2026</h2>
+        <button class="btn-icon" id="btnNextMonth">→</button>
+      </div>
+      <button class="btn-icon small" id="btnToday">📍</button>
+    </header>
+    <div class="weekdays"><span>Пн</span><span>Вт</span><span>Ср</span><span>Чт</span><span>Пт</span><span>Сб</span><span>Вс</span></div>
+    <div class="calendar-grid" id="calendarGrid"></div>
+    <div class="legend">
+      <span class="legend-item"><span class="dot dot-period"></span> Месячные</span>
+      <span class="legend-item"><span class="dot dot-ovulation"></span> Овуляция</span>
+      <span class="legend-item"><span class="dot dot-fertile"></span> Фертильные</span>
+    </div>
+    <p class="hint-text" id="hintText">Нажмите на день, чтобы отметить начало</p>
+  </section>
+
+  <!-- Экран дашборда -->
+  <section class="screen screen-dashboard" id="screenDashboard">
+    <header class="dash-header"><h2>Обзор цикла</h2></header>
+    <div class="dash-content" id="dashContent">
+      <div class="dash-card"><span class="card-icon">📅</span><span class="card-label">День цикла</span><span class="card-value" id="cycleDay">—</span><div class="progress-bar"><div class="progress-fill" id="cycleProgress"></div></div></div>
+      <div class="dash-card"><span class="card-icon">🔴</span><span class="card-label">Следующие месячные</span><span class="card-value-small" id="nextPeriod">Нет данных</span></div>
+      <div class="dash-card"><span class="card-icon">🔵</span><span class="card-label">Овуляция</span><span class="card-value-small" id="ovulationDay">Нет данных</span></div>
+      <div class="dash-card"><span class="card-icon">🟢</span><span class="card-label">Фертильное окно</span><span class="card-value-small" id="fertileWindow">Нет данных</span></div>
+      <div class="dash-card" id="statsCard" style="display:none;"><span class="card-icon">📊</span><span class="card-label">Статистика</span><div id="statsContent"></div><svg id="cycleGraph" width="100%" height="50" viewBox="0 0 300 50" preserveAspectRatio="none" style="margin-top:0.5rem;"></svg></div>
+    </div>
+  </section>
+</div>
+
+<div class="page-indicator" id="pageIndicator">
+  <span class="dot-indicator active" data-screen="0"></span>
+  <span class="dot-indicator" data-screen="1"></span>
+</div>
+
+<div class="modal-overlay" id="modalSettings">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <h3 class="modal-title">Настройки</h3>
+    <div class="form-group"><label class="form-label">Длина цикла</label><div class="form-row"><button class="btn-icon" id="btnCycleMinus">−</button><span class="form-value" id="cycleLengthValue">28</span><button class="btn-icon" id="btnCyclePlus">+</button></div></div>
+    <div class="form-group"><label class="form-label">Длительность месячных</label><div class="form-row"><button class="btn-icon" id="btnPeriodMinus">−</button><span class="form-value" id="periodLengthValue">5</span><button class="btn-icon" id="btnPeriodPlus">+</button></div></div>
+    <div class="form-group"><label class="form-label">Лютеиновая фаза</label><div class="form-row"><button class="btn-icon" id="btnLutealMinus">−</button><span class="form-value" id="lutealPhaseValue">14</span><button class="btn-icon" id="btnLutealPlus">+</button></div></div>
+    <div class="btn-row"><button class="btn-secondary" id="btnCloseSettings">Закрыть</button><button class="btn-primary" id="btnSaveSettings">Сохранить</button></div>
+    <div class="btn-row"><button class="btn-secondary" id="btnExportData">Экспорт</button><button class="btn-secondary" id="btnImportData">Импорт</button></div>
+    <input type="file" id="importFileInput" accept=".json" style="display:none;">
+    <div style="margin-top:1rem;"><button class="btn-danger" id="btnResetData">Сбросить все данные</button></div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modalOnboarding">
+  <div class="modal-sheet" id="onboardingSheet">
+    <div class="modal-handle"></div>
+    <div id="onboardingStep1">
+      <h3 class="modal-title">Добро пожаловать</h3>
+      <p style="text-align:center;color:var(--text-secondary);margin-bottom:1rem;">Давайте настроим ваш цикл</p>
+      <div class="form-group"><label class="form-label">Длина цикла (дней)</label><input type="number" class="form-input" id="onbCycleLength" value="28" min="18" max="60"></div>
+      <button class="btn-primary" id="btnOnbNext1">Далее</button>
+    </div>
+    <div id="onboardingStep2" style="display:none;">
+      <h3 class="modal-title">Длительность месячных</h3>
+      <div class="form-group"><label class="form-label">Дней</label><input type="number" class="form-input" id="onbPeriodLength" value="5" min="1" max="14"></div>
+      <button class="btn-primary" id="btnOnbNext2">Далее</button>
+    </div>
+    <div id="onboardingStep3" style="display:none;">
+      <h3 class="modal-title">Последние месячные</h3>
+      <div class="form-group"><label class="form-label">Дата начала</label><input type="date" class="form-input" id="onbLastPeriod"></div>
+      <button class="btn-primary" id="btnOnbFinish">Начать</button>
+    </div>
+  </div>
+</div>
+
+<div class="context-menu" id="contextMenu">
+  <div class="context-menu-item" data-action="pain">😣 Боль</div>
+  <div class="context-menu-item" data-action="mood">😊 Настроение</div>
+  <div class="context-menu-item" data-action="note">📝 Заметка</div>
+  <div class="context-menu-item" data-action="delete">🗑️ Удалить отметку</div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  // ... (JS без изменений, полный код из предыдущего ответа)
+  // Ниже вставлена вся логика из предыдущего ответа (без сокращений)
+  // ==================== STORAGE ====================
+  const STORAGE_KEY = 'cycle_data_v3', ONBOARDING_KEY = 'cycle_onboarded';
+  let data = {
+    version: 1,
+    periods: [],
+    symptoms: {},
+    cycleLength: 28,
+    periodLength: 5,
+    lutealPhase: 14
+  };
+
+  function loadData() {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (parsed) {
+          data.version = parsed.version || 1;
+          data.periods = Array.isArray(parsed.periods) ? parsed.periods.filter(n => typeof n === 'number') : [];
+          data.symptoms = parsed.symptoms || {};
+          data.cycleLength = typeof parsed.cycleLength === 'number' ? parsed.cycleLength : 28;
+          data.periodLength = typeof parsed.periodLength === 'number' ? parsed.periodLength : 5;
+          data.lutealPhase = typeof parsed.lutealPhase === 'number' ? parsed.lutealPhase : 14;
+          data.periods.sort((a,b) => a - b);
+        }
+      }
+    } catch { resetToDefault(); }
+    validateAndClean();
+  }
+
+  function saveData() {
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); } catch { showToast('Ошибка сохранения'); }
+  }
+
+  function resetToDefault() {
+    data = { version:1, periods:[], symptoms:{}, cycleLength:28, periodLength:5, lutealPhase:14 };
+  }
+
+  function validateAndClean() {
+    data.cycleLength = Math.max(18, Math.min(60, data.cycleLength));
+    data.periodLength = Math.max(1, Math.min(14, data.periodLength));
+    data.lutealPhase = Math.max(8, Math.min(20, data.lutealPhase));
+    data.periods = data.periods.filter(ts => typeof ts === 'number').sort((a,b) => a - b);
+  }
+
+  function dateToTimestamp(str) { const [y,m,d] = str.split('-'); return Date.UTC(+y, +m-1, +d); }
+  function timestampToDateStr(ts) { const d = new Date(ts); return `${d.getUTCFullYear()}-${String(d.getUTCMonth()+1).padStart(2,'0')}-${String(d.getUTCDate()).padStart(2,'0')}`; }
+  function addDays(ts, days) { return ts + days * 86400000; }
+  function todayTimestamp() { const now = new Date(); return Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()); }
+  function formatDateFull(ts) { const d = new Date(ts); const m = ['января','февраля','марта','апреля','мая','июня','июля','августа','сентября','октября','ноября','декабря']; return `${d.getUTCDate()} ${m[d.getUTCMonth()]} ${d.getUTCFullYear()}`; }
+  function formatDateShort(ts) { const d = new Date(ts); const m = ['янв','фев','мар','апр','мая','июн','июл','авг','сен','окт','ноя','дек']; return `${d.getUTCDate()} ${m[d.getUTCMonth()]}`; }
+
+  function getAverageCycleLength() {
+    if (data.periods.length < 2) return data.cycleLength;
+    let sum = 0;
+    for (let i=1; i<data.periods.length; i++) sum += Math.round((data.periods[i]-data.periods[i-1])/86400000);
+    return Math.max(18, Math.min(60, Math.round(sum/(data.periods.length-1))));
+  }
+
+  function getPredictedCycleLength() { return data.periods.length >= 2 ? getAverageCycleLength() : data.cycleLength; }
+  function getLastPeriodStart() { return data.periods.length ? data.periods[data.periods.length-1] : null; }
+  function getPredictedNextPeriod() { const last = getLastPeriodStart(); return last ? addDays(last, getPredictedCycleLength()) : null; }
+  function getPredictedOvulation() { const next = getPredictedNextPeriod(); return next ? addDays(next, -data.lutealPhase) : null; }
+  function getFertileWindow() { const ov = getPredictedOvulation(); return ov ? {start: addDays(ov,-5), end: addDays(ov,1)} : null; }
+  function getCurrentCycleDay() { const last = getLastPeriodStart(); if (!last) return null; const today = todayTimestamp(); return today < last ? null : Math.round((today-last)/86400000)+1; }
+  function getPeriodDaysForStart(ts) { const s = new Set(); for (let i=0; i<data.periodLength; i++) s.add(addDays(ts,i)); return s; }
+  function getAllPeriodDays() { const all = new Set(); data.periods.forEach(ts => { const d = getPeriodDaysForStart(ts); d.forEach(x => all.add(x)); }); return all; }
+  function getOvulationDaysSet() { const ov = new Set(); data.periods.forEach(ts => ov.add(addDays(addDays(ts, getPredictedCycleLength()), -data.lutealPhase))); const cur = getPredictedOvulation(); if (cur) ov.add(cur); return ov; }
+  function getFertileDaysSet() { const f = new Set(); data.periods.forEach(ts => { const ov = addDays(addDays(ts, getPredictedCycleLength()), -data.lutealPhase); for (let i=-5; i<=1; i++) f.add(addDays(ov,i)); }); const fw = getFertileWindow(); if (fw) for (let d=fw.start; d<=fw.end; d=addDays(d,1)) f.add(d); return f; }
+
+  let cellMap = {};
+  let currentMonth = new Date().getMonth(), currentYear = new Date().getFullYear();
+  const calendarGrid = document.getElementById('calendarGrid');
+  const monthTitle = document.getElementById('monthTitle');
+  const hintText = document.getElementById('hintText');
+
+  function renderCalendar() {
+    const frag = document.createDocumentFragment();
+    calendarGrid.innerHTML = '';
+    cellMap = {};
+    const todayTs = todayTimestamp();
+    const periodStarts = new Set(data.periods);
+    const allPeriod = getAllPeriodDays();
+    const ovSet = getOvulationDaysSet();
+    const fSet = getFertileDaysSet();
+    const totalDays = new Date(Date.UTC(currentYear, currentMonth+1, 0)).getUTCDate();
+    const firstDow = new Date(Date.UTC(currentYear, currentMonth, 1)).getUTCDay();
+    const startDow = firstDow === 0 ? 6 : firstDow - 1;
+    const prevMonth = currentMonth === 0 ? 11 : currentMonth-1;
+    const prevYear = currentMonth === 0 ? currentYear-1 : currentYear;
+    const prevDays = new Date(Date.UTC(prevYear, prevMonth+1, 0)).getUTCDate();
+
+    for (let i=startDow-1; i>=0; i--) {
+      const day = prevDays - i;
+      const dateStr = `${prevYear}-${String(prevMonth+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
+      frag.appendChild(createCell(day, dateStr, true, todayTs, periodStarts, allPeriod, ovSet, fSet));
+    }
+    for (let d=1; d<=totalDays; d++) {
+      const dateStr = `${currentYear}-${String(currentMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+      frag.appendChild(createCell(d, dateStr, false, todayTs, periodStarts, allPeriod, ovSet, fSet));
+    }
+    const totalCells = startDow + totalDays;
+    const remaining = totalCells % 7 === 0 ? 0 : 7 - (totalCells % 7);
+    const nextMonth = currentMonth === 11 ? 0 : currentMonth+1;
+    const nextYear = currentMonth === 11 ? currentYear+1 : currentYear;
+    for (let d=1; d<=remaining; d++) {
+      const dateStr = `${nextYear}-${String(nextMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+      frag.appendChild(createCell(d, dateStr, true, todayTs, periodStarts, allPeriod, ovSet, fSet));
+    }
+    calendarGrid.appendChild(frag);
+    monthTitle.textContent = formatMonthYear(currentYear, currentMonth);
+    updateHintText();
+    adaptLayout();
+  }
+
+  function createCell(day, dateStr, isOther, todayTs, periodStarts, allPeriod, ovSet, fSet) {
+    const cell = document.createElement('button');
+    cell.className = 'calendar-cell';
+    cell.textContent = day;
+    cell.setAttribute('data-date', dateStr);
+    if (isOther) cell.classList.add('other-month');
+    else {
+      cell.addEventListener('click', () => onDayClick(dateStr));
+      cell.addEventListener('touchstart', handleTouchStart, {passive: false});
+      cell.addEventListener('touchend', handleTouchEnd);
+    }
+    const ts = dateToTimestamp(dateStr);
+    if (ts === todayTs && !isOther) cell.classList.add('today');
+    if (periodStarts.has(ts) && !isOther) cell.classList.add('period-start');
+    else if (allPeriod.has(ts) && !isOther) cell.classList.add('period-day');
+    if (ovSet.has(ts) && !isOther && !periodStarts.has(ts) && !allPeriod.has(ts)) cell.classList.add('ovulation-day');
+    if (fSet.has(ts) && !isOther && !periodStarts.has(ts) && !allPeriod.has(ts) && !ovSet.has(ts)) cell.classList.add('fertile-day');
+    const dot = document.createElement('span');
+    dot.className = 'dot-indicator-cell';
+    cell.appendChild(dot);
+    cellMap[dateStr] = cell;
+    return cell;
+  }
+
+  function updateRelatedCells() {
+    const allPeriod = getAllPeriodDays();
+    const ovSet = getOvulationDaysSet();
+    const fSet = getFertileDaysSet();
+    for (const dateStr in cellMap) {
+      const cell = cellMap[dateStr];
+      if (cell.classList.contains('other-month')) continue;
+      const ts = dateToTimestamp(dateStr);
+      const isStart = data.periods.includes(ts);
+      cell.classList.remove('period-start','period-day','ovulation-day','fertile-day');
+      if (isStart) cell.classList.add('period-start');
+      else if (allPeriod.has(ts)) cell.classList.add('period-day');
+      if (ovSet.has(ts) && !isStart && !allPeriod.has(ts)) cell.classList.add('ovulation-day');
+      if (fSet.has(ts) && !isStart && !allPeriod.has(ts) && !ovSet.has(ts)) cell.classList.add('fertile-day');
+    }
+  }
+
+  function formatMonthYear(y, m) {
+    const months = ['Январь','Февраль','Март','Апрель','Май','Июнь','Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь'];
+    return `${months[m]} ${y}`;
+  }
+
+  function updateHintText() {
+    const next = getPredictedNextPeriod();
+    hintText.textContent = next ? `Следующие месячные: ${formatDateFull(next)}` : 'Нажмите на день, чтобы отметить начало';
+  }
+
+  function adaptLayout() {
+    const screens = document.querySelectorAll('.screen');
+    const viewH = window.innerHeight;
+    let maxRatio = 1;
+    screens.forEach(s => {
+      const ratio = s.scrollHeight / viewH;
+      if (ratio > maxRatio) maxRatio = ratio;
+    });
+    let scale = Math.min(1, 1 / maxRatio);
+    scale = Math.max(0.85, Math.round(scale * 1000) / 1000);
+    document.documentElement.style.setProperty('--ui-scale', scale);
+    screens.forEach(s => {
+      if (scale <= 0.86 && s.scrollHeight > viewH) s.style.overflowY = 'auto';
+      else s.style.overflowY = 'hidden';
+    });
+  }
+
+  window.addEventListener('resize', () => { adaptLayout(); });
+  window.addEventListener('orientationchange', () => setTimeout(adaptLayout, 100));
+
+  let longPressTimer, longPressDate;
+  function handleTouchStart(e) {
+    const cell = e.currentTarget;
+    longPressDate = cell.getAttribute('data-date');
+    clearTimeout(longPressTimer);
+    longPressTimer = setTimeout(() => {
+      if (navigator.vibrate) navigator.vibrate(10);
+      const rect = cell.getBoundingClientRect();
+      contextMenu.style.left = Math.min(rect.left, window.innerWidth-160) + 'px';
+      contextMenu.style.top = (rect.bottom + 5) + 'px';
+      contextMenu.setAttribute('data-date', longPressDate);
+      contextMenu.classList.add('active');
+      setTimeout(() => document.addEventListener('click', hideContextMenu, {once: true}));
+    }, 500);
+  }
+  function handleTouchEnd() { clearTimeout(longPressTimer); }
+  function hideContextMenu() { contextMenu.classList.remove('active'); }
+
+  contextMenu.addEventListener('click', (e) => {
+    const action = e.target.getAttribute('data-action');
+    const dateStr = contextMenu.getAttribute('data-date');
+    if (!action || !dateStr) return;
+    hideContextMenu();
+    if (action === 'pain') promptSymptom(dateStr, 'pain');
+    else if (action === 'mood') promptSymptom(dateStr, 'mood');
+    else if (action === 'note') promptNote(dateStr);
+    else if (action === 'delete') {
+      const ts = dateToTimestamp(dateStr);
+      const idx = data.periods.indexOf(ts);
+      if (idx !== -1) { data.periods.splice(idx,1); saveData(); updateRelatedCells(); updateDashboard(); updateHintText(); adaptLayout(); showToast('Удалено'); }
+    }
+  });
+
+  function promptSymptom(dateStr, type) {
+    const ts = dateToTimestamp(dateStr);
+    if (!data.symptoms[ts]) data.symptoms[ts] = {};
+    const val = prompt(type==='pain'?'Уровень боли (0-3)':'Настроение (😊, 😐, 😢)', data.symptoms[ts][type]||'');
+    if (val !== null) { data.symptoms[ts][type] = val; saveData(); showToast('Сохранено'); }
+  }
+  function promptNote(dateStr) {
+    const ts = dateToTimestamp(dateStr);
+    if (!data.symptoms[ts]) data.symptoms[ts] = {};
+    const note = prompt('Заметка', data.symptoms[ts].note||'');
+    if (note !== null) { data.symptoms[ts].note = note; saveData(); showToast('Сохранено'); }
+  }
+
+  function onDayClick(dateStr) {
+    if (navigator.vibrate) navigator.vibrate(8);
+    const ts = dateToTimestamp(dateStr);
+    const idx = data.periods.indexOf(ts);
+    if (idx >= 0) {
+      data.periods.splice(idx,1);
+      saveData(); updateRelatedCells(); updateDashboard(); updateHintText(); adaptLayout();
+      showToast('Отметка удалена');
+    } else {
+      data.periods.push(ts);
+      data.periods.sort((a,b)=>a-b);
+      saveData(); updateRelatedCells(); updateDashboard(); updateHintText(); adaptLayout();
+      showToast('Начало месячных отмечено');
+    }
+  }
+
+  function changeMonth(delta) {
+    currentMonth += delta;
+    if (currentMonth > 11) { currentMonth = 0; currentYear++; }
+    else if (currentMonth < 0) { currentMonth = 11; currentYear--; }
+    renderCalendar();
+  }
+
+  function goToToday() {
+    const now = new Date();
+    currentMonth = now.getMonth(); currentYear = now.getFullYear();
+    renderCalendar();
+  }
+
+  function updateDashboard() {
+    const cycleDay = getCurrentCycleDay();
+    const nextPeriod = getPredictedNextPeriod();
+    const ovulation = getPredictedOvulation();
+    const fw = getFertileWindow();
+    document.getElementById('cycleDay').textContent = cycleDay || '—';
+    const progress = cycleDay ? Math.min(100, Math.round((cycleDay/getPredictedCycleLength())*100)) : 0;
+    document.getElementById('cycleProgress').style.width = progress+'%';
+    document.getElementById('nextPeriod').textContent = nextPeriod ? `${formatDateFull(nextPeriod)} (через ${Math.round((nextPeriod-todayTimestamp())/86400000)} дн.)` : 'Нет данных';
+    document.getElementById('ovulationDay').textContent = ovulation ? formatDateFull(ovulation) : 'Нет данных';
+    document.getElementById('fertileWindow').textContent = fw ? `${formatDateShort(fw.start)} – ${formatDateShort(fw.end)}` : 'Нет данных';
+
+    const statsCard = document.getElementById('statsCard');
+    if (data.periods.length >= 2) {
+      statsCard.style.display = 'block';
+      const cycles = [];
+      for (let i=1; i<data.periods.length; i++) cycles.push(Math.round((data.periods[i]-data.periods[i-1])/86400000));
+      const regularity = cycles.length ? (Math.max(...cycles)-Math.min(...cycles)<=3?'Регулярный':'Нерегулярный') : '—';
+      document.getElementById('statsContent').innerHTML = `
+        <div>Средний цикл: <strong>${getAverageCycleLength()} дн.</strong></div>
+        <div>Последние: ${cycles.slice(-4).join(', ')}</div>
+        <div>Регулярность: ${regularity}</div>
+      `;
+      drawGraph(cycles.slice(-6));
+    } else {
+      statsCard.style.display = 'none';
+    }
+    adaptLayout();
+  }
+
+  function drawGraph(cycles) {
+    const svg = document.getElementById('cycleGraph');
+    const w=300, h=50, pad=4, max=Math.max(...cycles,28);
+    const bw = (w-pad*2)/cycles.length - 2;
+    svg.innerHTML = cycles.map((c,i)=>{
+      const bh = (c/max)*(h-pad*2);
+      return `<rect x="${pad+i*(bw+2)}" y="${h-pad-bh}" width="${bw}" height="${bh}" rx="3" fill="var(--color-accent)" opacity="0.8"/>`;
+    }).join('');
+  }
+
+  function openSettings() {
+    document.getElementById('cycleLengthValue').textContent = data.cycleLength;
+    document.getElementById('periodLengthValue').textContent = data.periodLength;
+    document.getElementById('lutealPhaseValue').textContent = data.lutealPhase;
+    document.getElementById('modalSettings').classList.add('active');
+  }
+  function closeSettings() { document.getElementById('modalSettings').classList.remove('active'); }
+
+  function saveSettings() {
+    data.cycleLength = +document.getElementById('cycleLengthValue').textContent;
+    data.periodLength = +document.getElementById('periodLengthValue').textContent;
+    data.lutealPhase = +document.getElementById('lutealPhaseValue').textContent;
+    validateAndClean();
+    saveData();
+    renderCalendar();
+    updateDashboard();
+    closeSettings();
+    showToast('Сохранено');
+  }
+
+  function exportData() {
+    const blob = new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'cycle_backup.json';
+    a.click();
+  }
+
+  function importData(file) {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const imported = JSON.parse(e.target.result);
+        if (imported.periods) {
+          data = imported;
+          validateAndClean();
+          saveData();
+          renderCalendar();
+          updateDashboard();
+          showToast('Импортировано');
+        }
+      } catch { showToast('Ошибка файла'); }
+    };
+    reader.readAsText(file);
+  }
+
+  function startOnboarding() {
+    document.getElementById('modalOnboarding').classList.add('active');
+    document.getElementById('onboardingStep1').style.display='block';
+    document.getElementById('onboardingStep2').style.display='none';
+    document.getElementById('onboardingStep3').style.display='none';
+    document.getElementById('onbLastPeriod').value = new Date().toISOString().slice(0,10);
+  }
+
+  document.getElementById('btnOnbNext1').onclick = () => {
+    data.cycleLength = +document.getElementById('onbCycleLength').value || 28;
+    document.getElementById('onboardingStep1').style.display='none';
+    document.getElementById('onboardingStep2').style.display='block';
+  };
+  document.getElementById('btnOnbNext2').onclick = () => {
+    data.periodLength = +document.getElementById('onbPeriodLength').value || 5;
+    document.getElementById('onboardingStep2').style.display='none';
+    document.getElementById('onboardingStep3').style.display='block';
+  };
+  document.getElementById('btnOnbFinish').onclick = () => {
+    const lastDate = document.getElementById('onbLastPeriod').value;
+    if (lastDate) { data.periods.push(dateToTimestamp(lastDate)); data.periods.sort((a,b)=>a-b); }
+    saveData();
+    document.getElementById('modalOnboarding').classList.remove('active');
+    localStorage.setItem(ONBOARDING_KEY,'1');
+    renderCalendar();
+    updateDashboard();
+    showToast('Готово!');
+  };
+
+  (function setupPWA() {
+    const manifest = {name:"Календарь цикла",short_name:"Цикл",start_url:location.href,display:"standalone",background_color:"#F2F2F7",theme_color:"#F2F2F7",icons:[{src:"icon.png",sizes:"192x192",type:"image/png"}]};
+    const link = document.createElement('link'); link.rel='manifest'; link.href=URL.createObjectURL(new Blob([JSON.stringify(manifest)],{type:'application/json'})); document.head.appendChild(link);
+    if ('serviceWorker' in navigator) {
+      const sw = new Blob([`self.addEventListener('install',e=>e.waitUntil(caches.open('v1').then(c=>c.addAll([self.location.href,'icon.png']))));self.addEventListener('fetch',e=>e.respondWith(caches.match(e.request).then(r=>r||fetch(e.request))));`],{type:'application/javascript'});
+      navigator.serviceWorker.register(URL.createObjectURL(sw)).catch(()=>{});
+    }
+  })();
+
+  function showToast(msg) {
+    const t = document.getElementById('toast');
+    t.textContent = msg; t.classList.add('visible');
+    clearTimeout(window._toastTimer);
+    window._toastTimer = setTimeout(() => t.classList.remove('visible'), 2000);
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    loadData();
+    renderCalendar();
+    updateDashboard();
+
+    document.getElementById('btnPrevMonth').onclick = () => changeMonth(-1);
+    document.getElementById('btnNextMonth').onclick = () => changeMonth(1);
+    document.getElementById('btnToday').onclick = goToToday;
+    document.getElementById('btnSettings').onclick = openSettings;
+    document.getElementById('btnCloseSettings').onclick = closeSettings;
+    document.getElementById('btnSaveSettings').onclick = saveSettings;
+    document.getElementById('btnCycleMinus').onclick = () => { if (data.cycleLength>18) { data.cycleLength--; document.getElementById('cycleLengthValue').textContent=data.cycleLength; } };
+    document.getElementById('btnCyclePlus').onclick = () => { if (data.cycleLength<60) { data.cycleLength++; document.getElementById('cycleLengthValue').textContent=data.cycleLength; } };
+    document.getElementById('btnPeriodMinus').onclick = () => { if (data.periodLength>1) { data.periodLength--; document.getElementById('periodLengthValue').textContent=data.periodLength; } };
+    document.getElementById('btnPeriodPlus').onclick = () => { if (data.periodLength<14) { data.periodLength++; document.getElementById('periodLengthValue').textContent=data.periodLength; } };
+    document.getElementById('btnLutealMinus').onclick = () => { if (data.lutealPhase>8) { data.lutealPhase--; document.getElementById('lutealPhaseValue').textContent=data.lutealPhase; } };
+    document.getElementById('btnLutealPlus').onclick = () => { if (data.lutealPhase<20) { data.lutealPhase++; document.getElementById('lutealPhaseValue').textContent=data.lutealPhase; } };
+    document.getElementById('btnResetData').onclick = () => { if (confirm('Удалить все данные?')) { resetToDefault(); saveData(); renderCalendar(); updateDashboard(); closeSettings(); } };
+    document.getElementById('btnExportData').onclick = exportData;
+    document.getElementById('btnImportData').onclick = () => document.getElementById('importFileInput').click();
+    document.getElementById('importFileInput').onchange = (e) => { if (e.target.files[0]) importData(e.target.files[0]); };
+
+    const dots = document.querySelectorAll('.dot-indicator');
+    document.getElementById('appContainer').addEventListener('scroll', () => {
+      const idx = Math.round(appContainer.scrollTop / appContainer.clientHeight);
+      dots.forEach((d,i) => d.classList.toggle('active', i===idx));
+    });
+    dots.forEach(d => d.addEventListener('click', () => {
+      const idx = +d.dataset.screen;
+      document.getElementById(idx===0?'screenCalendar':'screenDashboard').scrollIntoView({behavior:'smooth'});
+    }));
+
+    if (!localStorage.getItem(ONBOARDING_KEY)) setTimeout(startOnboarding, 500);
+    else if ('Notification' in window && Notification.permission === 'default') Notification.requestPermission();
+
+    document.getElementById('modalSettings').addEventListener('click', (e) => { if (e.target === e.currentTarget) closeSettings(); });
+    document.getElementById('modalOnboarding').addEventListener('click', (e) => { if (e.target === e.currentTarget) document.getElementById('modalOnboarding').classList.remove('active'); });
+  });
+</script>
+</body>
+</html>
